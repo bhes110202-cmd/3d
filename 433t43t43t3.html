@@ -1,0 +1,2159 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>3D 兒童水果冒險群島 | Fruit Adventure Islands</title>
+  <style>
+    :root {
+      --primary: #FF8C42;
+      --primary-dark: #E06D22;
+      --secondary: #2EC4B6;
+      --bg-cream: #FFFDF7;
+      --panel-bg: rgba(255, 253, 247, 0.94);
+      --text-main: #2B2D42;
+      --text-muted: #5C6274;
+      --border-soft: rgba(43, 45, 66, 0.12);
+      --shadow-card: 0 12px 32px rgba(43, 45, 66, 0.14);
+      --radius-lg: 20px;
+      --radius-md: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif;
+      background: linear-gradient(180deg, #8ECAE6 0%, #CAF0F8 65%, #FFF3B0 100%);
+      color: var(--text-main);
+      user-select: none;
+    }
+
+    #canvas-container {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      touch-action: none;
+    }
+
+    /* 左側可收合導覽與進度欄 */
+    #left-sidebar {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      bottom: 16px;
+      width: 330px;
+      max-width: calc(100vw - 32px);
+      background: var(--panel-bg);
+      backdrop-filter: blur(12px);
+      border-radius: var(--radius-lg);
+      border: 2px solid #FFFFFF;
+      box-shadow: var(--shadow-card);
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s ease;
+      overflow: hidden;
+    }
+
+    #left-sidebar.collapsed {
+      transform: translateX(calc(-100% - 24px));
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .sidebar-header {
+      padding: 18px 20px 14px;
+      background: linear-gradient(135deg, #FF9F1C, #FFBF69);
+      color: #FFFFFF;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .sidebar-header h1 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    }
+
+    .sidebar-header p {
+      font-size: 0.8rem;
+      opacity: 0.95;
+      margin-top: 4px;
+    }
+
+    .icon-btn {
+      background: rgba(255, 255, 255, 0.25);
+      border: none;
+      color: #FFFFFF;
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s, transform 0.15s;
+      flex-shrink: 0;
+    }
+
+    .icon-btn:hover {
+      background: rgba(255, 255, 255, 0.4);
+      transform: scale(1.05);
+    }
+
+    #expand-sidebar-btn {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      z-index: 19;
+      background: var(--primary);
+      color: #FFFFFF;
+      border: 2px solid #FFFFFF;
+      border-radius: 14px;
+      padding: 10px 16px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      box-shadow: var(--shadow-card);
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      transition: transform 0.2s, background 0.2s;
+    }
+
+    #expand-sidebar-btn.visible {
+      display: flex;
+    }
+
+    #expand-sidebar-btn:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+    }
+
+    .sidebar-body {
+      padding: 16px 18px;
+      overflow-y: auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .card-box {
+      background: #FFFFFF;
+      border-radius: var(--radius-md);
+      padding: 14px;
+      border: 1px solid var(--border-soft);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    }
+
+    .card-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .progress-bar-bg {
+      width: 100%;
+      height: 10px;
+      background: #EDF2F4;
+      border-radius: 99px;
+      overflow: hidden;
+      margin: 8px 0;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #2EC4B6, #52B788);
+      border-radius: 99px;
+      transition: width 0.4s ease;
+    }
+
+    .badge-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .badge-item {
+      aspect-ratio: 1;
+      border-radius: 12px;
+      background: #F8F9FA;
+      border: 2px dashed #CBD5E1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      opacity: 0.45;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .badge-item.unlocked {
+      opacity: 1;
+      background: #FFF9EC;
+      border: 2px solid #FFB703;
+      box-shadow: 0 4px 10px rgba(255, 183, 3, 0.25);
+      transform: scale(1.03);
+    }
+
+    .badge-item span {
+      font-size: 0.62rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-top: 2px;
+      text-align: center;
+      line-height: 1.1;
+    }
+
+    .action-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .btn-primary, .btn-secondary, .btn-outline {
+      border: none;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #FFFFFF;
+      box-shadow: 0 4px 12px rgba(255, 140, 66, 0.3);
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: var(--secondary);
+      color: #FFFFFF;
+      box-shadow: 0 4px 12px rgba(46, 196, 182, 0.28);
+    }
+
+    .btn-secondary:hover {
+      background: #23A397;
+      transform: translateY(-1px);
+    }
+
+    .btn-outline {
+      background: #FFFFFF;
+      color: var(--text-main);
+      border: 1.5px solid var(--border-soft);
+    }
+
+    .btn-outline:hover {
+      background: #F8F9FA;
+      border-color: var(--primary);
+    }
+
+    .island-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .island-nav-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      border-radius: 10px;
+      background: #F8FAFC;
+      border: 1px solid transparent;
+      cursor: pointer;
+      font-size: 0.86rem;
+      font-weight: 600;
+      color: var(--text-main);
+      transition: all 0.2s;
+    }
+
+    .island-nav-btn:hover {
+      background: #FFF3E0;
+      border-color: #FFB703;
+    }
+
+    .island-nav-btn .status-dot {
+      font-size: 0.78rem;
+      padding: 2px 7px;
+      border-radius: 99px;
+      background: #E2E8F0;
+      color: #475569;
+    }
+
+    .island-nav-btn.completed .status-dot {
+      background: #D1FAE5;
+      color: #065F46;
+    }
+
+    /* 右側詳細知識與問答面板 */
+    #right-drawer {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      bottom: 16px;
+      width: 400px;
+      max-width: calc(100vw - 32px);
+      background: var(--panel-bg);
+      backdrop-filter: blur(14px);
+      border-radius: var(--radius-lg);
+      border: 2px solid #FFFFFF;
+      box-shadow: var(--shadow-card);
+      z-index: 25;
+      display: flex;
+      flex-direction: column;
+      transform: translateX(calc(100% + 28px));
+      transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+      overflow: hidden;
+    }
+
+    #right-drawer.open {
+      transform: translateX(0);
+    }
+
+    .drawer-header {
+      padding: 16px 20px;
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--primary);
+    }
+
+    .drawer-body {
+      padding: 18px 20px;
+      overflow-y: auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      user-select: text;
+    }
+
+    .photo-frame {
+      width: 100%;
+      border-radius: 14px;
+      overflow: hidden;
+      background: #F1F5F9;
+      border: 1px solid var(--border-soft);
+    }
+
+    .photo-frame img {
+      width: 100%;
+      height: 190px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .photo-caption {
+      padding: 8px 12px;
+      font-size: 0.74rem;
+      color: var(--text-muted);
+      background: #F8FAFC;
+      border-top: 1px solid var(--border-soft);
+    }
+
+    .info-section h4 {
+      font-size: 0.88rem;
+      color: var(--primary-dark);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .info-section p {
+      font-size: 0.88rem;
+      line-height: 1.6;
+      color: var(--text-main);
+    }
+
+    .fun-fact-box {
+      background: #FFF9DB;
+      border-left: 4px solid #FAB005;
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 0.86rem;
+      line-height: 1.55;
+    }
+
+    .source-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.82rem;
+      color: #0284C7;
+      text-decoration: none;
+      font-weight: 600;
+      padding: 6px 10px;
+      background: #E0F2FE;
+      border-radius: 8px;
+      width: fit-content;
+    }
+
+    .source-link:hover {
+      background: #BAE6FD;
+    }
+
+    /* 問答區塊 */
+    .quiz-card {
+      background: #F0FDF4;
+      border: 1.5px solid #86EFAC;
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    .quiz-option {
+      width: 100%;
+      text-align: left;
+      padding: 10px 12px;
+      margin-top: 8px;
+      border-radius: 10px;
+      border: 1.5px solid #CBD5E1;
+      background: #FFFFFF;
+      font-size: 0.86rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .quiz-option:hover {
+      border-color: var(--secondary);
+      background: #F0FDFA;
+    }
+
+    .quiz-option.correct {
+      background: #DCFCE7;
+      border-color: #16A34A;
+      color: #14532D;
+    }
+
+    .quiz-option.wrong {
+      background: #FEE2E2;
+      border-color: #DC2626;
+      color: #7F1D1D;
+    }
+
+    /* 底部建造工坊工具列 */
+    #workshop-bar {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%) translateY(140%);
+      background: var(--panel-bg);
+      backdrop-filter: blur(14px);
+      border: 2px solid #FFFFFF;
+      border-radius: 20px;
+      box-shadow: var(--shadow-card);
+      padding: 12px 16px;
+      z-index: 22;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: calc(100vw - 24px);
+      transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    #workshop-bar.active {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .workshop-tools {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .tool-item {
+      flex-shrink: 0;
+      min-width: 68px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: #FFFFFF;
+      border: 2px solid var(--border-soft);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      transition: all 0.15s;
+    }
+
+    .tool-item .emoji {
+      font-size: 1.35rem;
+    }
+
+    .tool-item.selected {
+      border-color: var(--primary);
+      background: #FFF3E0;
+      transform: translateY(-2px);
+    }
+
+    .workshop-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: center;
+      border-top: 1px solid var(--border-soft);
+      padding-top: 8px;
+    }
+
+    .mini-btn {
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border-soft);
+      background: #FFFFFF;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .mini-btn:hover {
+      background: #F1F5F9;
+    }
+
+    .mini-btn.danger {
+      color: #DC2626;
+      border-color: #FECACA;
+    }
+
+    /* 自動導覽控制列 */
+    #tour-bar {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-150%);
+      background: rgba(43, 45, 66, 0.92);
+      color: #FFFFFF;
+      padding: 10px 18px;
+      border-radius: 99px;
+      z-index: 24;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+      transition: transform 0.35s ease;
+      max-width: calc(100vw - 32px);
+    }
+
+    #tour-bar.active {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    #tour-bar button {
+      background: rgba(255, 255, 255, 0.18);
+      border: none;
+      color: #FFFFFF;
+      padding: 6px 12px;
+      border-radius: 99px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    #tour-bar button:hover {
+      background: rgba(255, 255, 255, 0.32);
+    }
+
+    /* NPC 氣泡對話卡片 */
+    #npc-dialog {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(150%);
+      width: 420px;
+      max-width: calc(100vw - 32px);
+      background: #FFFFFF;
+      border-radius: 18px;
+      border: 3px solid var(--secondary);
+      box-shadow: var(--shadow-card);
+      padding: 16px 18px;
+      z-index: 26;
+      transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    #npc-dialog.open {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* 提示訊息 Toast */
+    #toast {
+      position: fixed;
+      top: 76px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(43, 45, 66, 0.9);
+      color: #FFFFFF;
+      padding: 9px 18px;
+      border-radius: 99px;
+      font-size: 0.86rem;
+      font-weight: 600;
+      z-index: 40;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+
+    #toast.show {
+      opacity: 1;
+    }
+
+    @media (max-width: 768px) {
+      #left-sidebar {
+        width: calc(100vw - 32px);
+        max-height: 75vh;
+      }
+      #right-drawer {
+        width: calc(100vw - 24px);
+        right: 12px;
+        top: 12px;
+        bottom: 12px;
+      }
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+        "@tweenjs/tween.js": "https://unpkg.com/@tweenjs/tween.js@23.1.2/dist/tween.esm.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="canvas-container"></div>
+  <div id="toast"></div>
+
+  <!-- 收合後的展開按鈕 -->
+  <button id="expand-sidebar-btn" aria-label="展開探索選單">
+    <span>🍓</span> 展開水果群島選單
+  </button>
+
+  <!-- 左側探索與任務護照面板 -->
+  <aside id="left-sidebar">
+    <div class="sidebar-header">
+      <div>
+        <h1>🍍 3D 水果冒險群島</h1>
+        <p>探索真實植物科學與世界水果王國</p>
+      </div>
+      <button class="icon-btn" id="collapse-sidebar-btn" title="收合選單">◀</button>
+    </div>
+
+    <div class="sidebar-body">
+      <div class="card-box">
+        <div class="card-title">
+          <span>🎒 探索任務護照</span>
+          <span id="progress-text">0 / 8 (0%)</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="progress-fill"></div>
+        </div>
+        <p style="font-size:0.75rem; color:var(--text-muted);">
+          點擊島嶼上的水果地標或角色，完成問答即可收集徽章（進度自動儲存於本機瀏覽器）。
+        </p>
+        <div class="badge-grid" id="badge-grid"></div>
+      </div>
+
+      <div class="action-grid">
+        <button class="btn-primary" id="start-tour-btn">🚁 自動導覽</button>
+        <button class="btn-secondary" id="toggle-workshop-btn">🔨 建造工坊</button>
+      </div>
+
+      <div class="card-box">
+        <div class="card-title">
+          <span>🏝️ 浮空島嶼傳送門</span>
+          <button class="mini-btn" id="reset-cam-btn">全景視角</button>
+        </div>
+        <div class="island-list" id="island-list"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 頂部自動導覽列 -->
+  <div id="tour-bar">
+    <span id="tour-label" style="font-weight:700; font-size:0.9rem;">🚁 群島全景導覽中</span>
+    <button id="tour-prev-btn">⏮ 上一座</button>
+    <button id="tour-pause-btn">⏸ 暫停</button>
+    <button id="tour-next-btn">下一座 ⏭</button>
+    <button id="tour-stop-btn" style="background:#E63946;">✕ 結束</button>
+  </div>
+
+  <!-- 右側主題知識與問答面板 -->
+  <aside id="right-drawer">
+    <div class="drawer-header" id="drawer-header">
+      <div>
+        <h2 id="drawer-title" style="font-size:1.15rem; font-weight:800;">島嶼名稱</h2>
+        <div id="drawer-sci" style="font-size:0.78rem; font-style:italic; opacity:0.9;">Scientific Name</div>
+      </div>
+      <button class="icon-btn" id="close-drawer-btn">✕</button>
+    </div>
+    <div class="drawer-body" id="drawer-body"></div>
+  </aside>
+
+  <!-- NPC 對話視窗 -->
+  <div id="npc-dialog">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+      <div>
+        <strong id="npc-name" style="font-size:1rem; color:var(--text-main);">NPC 名稱</strong>
+        <span id="npc-role" style="font-size:0.76rem; background:#E0F2FE; color:#0369A1; padding:2px 8px; border-radius:99px; margin-left:6px;">職業</span>
+      </div>
+      <button id="close-npc-btn" style="border:none; background:none; font-size:1.1rem; cursor:pointer;">✕</button>
+    </div>
+    <p id="npc-text" style="font-size:0.88rem; line-height:1.5; color:var(--text-main); margin-bottom:10px;"></p>
+    <div style="display:flex; gap:8px; justify-content:flex-end;">
+      <button class="btn-primary" id="npc-open-island-btn" style="padding:7px 14px; font-size:0.82rem;">📖 認識這座島與挑戰任務</button>
+    </div>
+  </div>
+
+  <!-- 底部建造工坊列 -->
+  <div id="workshop-bar">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <strong style="font-size:0.88rem;">🔨 島嶼創意建造工坊 <span id="workshop-hint" style="font-weight:400; color:var(--text-muted); font-size:0.78rem;">（選擇物件後點擊島嶼放置，或選取「跨島木橋」依序點擊兩座島）</span></strong>
+      <button class="mini-btn" id="close-workshop-btn">關閉工坊</button>
+    </div>
+    <div class="workshop-tools" id="workshop-tools"></div>
+    <div class="workshop-controls">
+      <button class="mini-btn" id="tool-select-btn">👆 選取/移動物件</button>
+      <button class="mini-btn" id="tool-rotate-btn">🔄 旋轉選中物件</button>
+      <button class="mini-btn danger" id="tool-delete-btn">🗑️ 刪除選中物件</button>
+      <button class="mini-btn" id="tool-undo-btn">↩️ 撤銷</button>
+      <button class="mini-btn" id="tool-redo-btn">↪️ 重做</button>
+      <button class="mini-btn danger" id="tool-clear-btn">🧹 清空自建</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import * as TWEEN from '@tweenjs/tween.js';
+
+    // =========================================================================
+    // 第一階段：真實可核實資料層（與 3D 渲染引擎完全分離）
+    // 資料來源：維基百科、農業部主題館、Wikimedia Commons 公開授權攝影
+    // =========================================================================
+    const FRUIT_ISLANDS = [
+      {
+        id: 'apple',
+        name: '紅玉蘋果島',
+        scientificName: 'Malus domestica',
+        fruitType: 'apple',
+        position: [0, 0, 0],
+        radius: 7.6,
+        themeColor: '#E63946',
+        badgeIcon: '🍎',
+        badgeName: '蘋果植物學家',
+        summary: '蘋果屬於薔薇科蘋果屬，原產於中亞天山山脈一帶，是全球溫帶地區栽培最廣泛的落葉果樹之一，果實富含膳食纖維與多酚類抗氧化物。',
+        background: '現代栽培蘋果的野生祖先主要為塞威氏蘋果（Malus sieversii），經由絲綢之路向西傳播至歐洲，並逐漸培育出超過 7,500 個栽培品種。',
+        funFact: '蘋果果肉中含有約 25% 的體積是空氣，因此把整顆蘋果放進水裡時，它會輕鬆地浮在水面上！',
+        photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Red_Apple.jpg/640px-Red_Apple.jpg',
+        photoCredit: '攝影：Abhijit Tembhekar / Wikimedia Commons（授權：CC BY 2.0）',
+        sourceName: '維基百科：蘋果 (Malus domestica)',
+        sourceUrl: 'https://zh.wikipedia.org/wiki/%E8%8B%B9%E6%9E%9C',
+        npcs: [
+          { name: '果農小迪', role: '蘋果園丁', color: '#E63946', greeting: '歡迎來到紅玉蘋果島！你知道為什麼整顆蘋果放進水裡會浮起來嗎？' },
+          { name: '博士艾瑪', role: '植物研究員', color: '#457B9D', greeting: '蘋果的野生祖先來自中亞天山山脈喔！點擊大蘋果查看詳細百科吧！' }
+        ],
+        quiz: {
+          question: '為什麼新鮮的蘋果放進水裡會浮起來？',
+          options: ['果皮有一層防水蠟', '果肉內部約有 25% 是空氣', '蘋果核是完全空心的'],
+          answerIndex: 1,
+          explanation: '蘋果細胞之間有許多微小的氣室，約佔總體積的 25%，使平均密度小於水！'
+        }
+      },
+      {
+        id: 'banana',
+        name: '黃金香蕉島',
+        scientificName: 'Musa acuminata',
+        fruitType: 'banana',
+        position: [18, 1.4, -5],
+        radius: 7.0,
+        themeColor: '#F59E0B',
+        badgeIcon: '🍌',
+        badgeName: '熱帶探險家',
+        summary: '香蕉是芭蕉科芭蕉屬的大型草本植物果實，主要分布於熱帶與亞熱帶地區，富含鉀離子、維生素 B6 與容易吸收的天然碳水化合物。',
+        background: '香蕉起源於東南亞與巴布亞紐幾內亞熱帶雨林。我們平常食用的無籽甜香蕉，多數是三倍體雜交品種，透過地下塊莖吸芽進行無性繁殖。',
+        funFact: '香蕉樹其實不是木本樹木！它的「樹幹」是由一層層緊密包裹的葉鞘所組成的「假莖」，所以香蕉是世界上最高大的草本植物之一。',
+        photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Banana-Single.jpg/640px-Banana-Single.jpg',
+        photoCredit: '攝影：Evan-Amos / Wikimedia Commons（授權：Public Domain）',
+        sourceName: '農業部：香蕉主題館',
+        sourceUrl: 'https://kmweb.moa.gov.tw/subject/index.php?id=38',
+        npcs: [
+          { name: '阿蕉船長', role: '熱帶果農', color: '#FB8500', greeting: '別被高大的外表騙了，香蕉樹在植物學上其實是大型「草本植物」喔！' },
+          { name: '營養師米亞', role: '運動營養師', color: '#2A9D8F', greeting: '運動員最愛吃香蕉來補充鉀離子與天然能量！' }
+        ],
+        quiz: {
+          question: '在植物學分類上，高大的香蕉「樹」屬於哪一種植物？',
+          options: ['大型草本植物', '針葉木本喬木', '藤本爬藤植物'],
+          answerIndex: 0,
+          explanation: '香蕉沒有木質化的樹幹，其直立結構是由葉鞘緊密包覆而成的假莖，屬於大型多年生草本植物。'
+        }
+      },
+      {
+        id: 'orange',
+        name: '陽光甜橙島',
+        scientificName: 'Citrus × sinensis',
+        fruitType: 'orange',
+        position: [14, -0.8, 16],
+        radius: 6.8,
+        themeColor: '#F77F00',
+        badgeIcon: '🍊',
+        badgeName: '維生素守護者',
+        summary: '甜橙是芸香科柑橘屬的常綠果樹，由柚子（Citrus maxima）與寬皮橘（Citrus reticulata）在古代自然雜交演化而成，以豐富的維生素 C 聞名。',
+        background: '柑橘類植物起源於喜馬拉雅山脈東南麓、中國南部與緬甸一帶，果皮表面布滿含有芳香精油的油胞，剝皮時會散發獨特的柑橘清香。',
+        funFact: '一顆中等大小的甜橙就能提供成人每日所需約 100% 的維生素 C，而果皮內側白色的海綿層（橘絡）更富含類黃酮與膳食纖維。',
+        photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/Orange-Fruit-Pieces.jpg/640px-Orange-Fruit-Pieces.jpg',
+        photoCredit: '攝影：Evan-Amos / Wikimedia Commons（授權：Public Domain）',
+        sourceName: '維基百科：甜橙 (Citrus × sinensis)',
+        sourceUrl: 'https://zh.wikipedia.org/wiki/%E7%94%9C%E6%A9%99',
+        npcs: [
+          { name: '橘子小妹', role: '果醬師傅', color: '#F77F00', greeting: '聞到柑橘精油的清香了嗎？這都是果皮表面油胞的功勞！' },
+          { name: '園藝師里歐', role: '柑橘育種員', color: '#43AA8B', greeting: '甜橙其實是柚子與寬皮橘在古代自然雜交的後代呢！' }
+        ],
+        quiz: {
+          question: '甜橙（Orange）在植物演化上是由哪兩種水果雜交而成的？',
+          options: ['檸檬與萊姆', '柚子與寬皮橘', '葡萄柚與金桔'],
+          answerIndex: 1,
+          explanation: '基因研究證實，甜橙是柚子（Pomelo）與寬皮橘（Mandarin）在古代雜交產生的物種。'
+        }
+      },
+      {
+        id: 'watermelon',
+        name: '沁涼西瓜島',
+        scientificName: 'Citrullus lanatus',
+        fruitType: 'watermelon',
+        position: [-14, 1.0, 15],
+        radius: 7.4,
+        themeColor: '#2EC4B6',
+        badgeIcon: '🍉',
+        badgeName: '沙漠水源專家',
+        summary: '西瓜屬於葫蘆科西瓜屬的一年生蔓性草本植物，果肉含水量高達約 92%，是夏季最受歡迎的消暑水果，並含有豐富的茄紅素與瓜胺酸。',
+        background: '西瓜原產於非洲南部與東北部的乾旱地區，早在四千多年前的古埃及壁畫中就已出現人類栽培與收穫西瓜的歷史紀錄。',
+        funFact: '西瓜果肉高達 92% 都是水分！在古代非洲沙漠旅行時，人們甚至會把西瓜當作天然的「隨身水壺」來解渴。',
+        photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Taiwan_2009_Tainan_City_Organic_Farm_Watermelon_FRD_7962.jpg/640px-Taiwan_2009_Tainan_City_Organic_Farm_Watermelon_FRD_7962.jpg',
+        photoCredit: '攝影：Fred Hsu / Wikimedia Commons（授權：CC BY-SA 3.0）',
+        sourceName: '維基百科：西瓜 (Citrullus lanatus)',
+        sourceUrl: 'https://zh.wikipedia.org/wiki/%E8%A5%BF%E7%93%9C',
+        npcs: [
+          { name: '阿瓜哥', role: '沙地瓜農', color: '#E71D36', greeting: '大熱天來片西瓜最棒了！西瓜果肉有超過九成都是水分喔！' },
+          { name: '考古員諾亞', role: '農業歷史學家', color: '#FF9F1C', greeting: '四千多年前的古埃及壁畫裡就已經畫有西瓜的圖案了！' }
+        ],
+        quiz: {
+          question: '新鮮西瓜果肉的水分含量大約佔多少百分比？',
+          options: ['約 50%', '約 70%', '約 92%'],
+          answerIndex: 2,
+          explanation: '西瓜果肉含有約 92% 的水分，因此成為非洲乾旱地區與夏季最佳的補水水果。'
+        }
+      },
+      {
+        id: 'strawberry',
+        name: '甜蜜草莓島',
+        scientificName: 'Fragaria × ananassa',
+        fruitType: 'strawberry',
+        position: [-18, -0.5, -6],
+        radius: 6.5,
+        themeColor: '#FF4D6D',
+        badgeIcon: '🍓',
+        badgeName: '花托觀察家',
+        summary: '現代栽培草莓是薔薇科草莓屬的多年生草本植物，由原產於北美的弗州草莓與南美的智利草莓在 18 世紀歐洲雜交培育而成。',
+        background: '臺灣苗栗縣大湖鄉是著名的草莓產區，每年冬季至春季氣候涼爽時最適合草莓開花結果，果實香氣濃郁、酸甜適中。',
+        funFact: '草莓紅通通香甜的部分其實不是植物學上的果實，而是膨大的「花托」（聚合果）；表面一粒粒像芝麻的小點才是真正的果實（瘦果）！',
+        photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/PerfectStrawberry.jpg/640px-PerfectStrawberry.jpg',
+        photoCredit: '攝影：Jon Sullivan / Wikimedia Commons（授權：Public Domain）',
+        sourceName: '農業部：草莓主題館',
+        sourceUrl: 'https://kmweb.moa.gov.tw/subject/index.php?id=108',
+        npcs: [
+          { name: '莓莓小姐', role: '甜點主廚', color: '#FF4D6D', greeting: '仔細看看草莓表面一粒粒的小點，那才是它真正的果實喔！' },
+          { name: '農夫阿凱', role: '溫室栽培師', color: '#52B788', greeting: '草莓喜歡涼爽的天氣，秋冬至春季時節最香甜！' }
+        ],
+        quiz: {
+          question: '我們吃草莓時，紅色多汁的部分在植物學上稱為什麼？',
+          options: ['膨大的花托', '堅硬的果核', '地下塊莖'],
+          answerIndex: 0,
+          explanation: '草莓的紅色果肉是由花托膨大發育而成的假果，表面一顆顆的小點（瘦果）才是真正的果實。'
+        }
+      },
+      {
+        id: 'grape',
+        name: '紫晶葡萄島',
+        scientificName: 'Vitis vinifera',
+        fruitType: 'grape',
+        position: [0, 1.8, -20],
+        radius: 6.8,
+        themeColor: '#7209B7',
+        badgeIcon: '🍇',
+        badgeName: '果粉小達人',
+        summary: '葡萄是葡萄科葡萄屬的木質藤本植物，果實呈總狀或圓錐花序成串生長，紫黑色果皮富含花青素與白藜蘆醇等天然植化素。',
+        background: '人類栽培葡萄已有六千年以上歷史，既可鮮食，也能製成葡萄乾、果汁或進行發酵釀造。臺灣彰化溪湖與台中新社是著名的巨峰葡萄產地。',
+        funFact: '新鮮葡萄表皮上那層白白霧霧的粉末不是農藥！那是葡萄自己分泌的天然「果粉」（蠟質保護層），能防止水分散失並阻擋病菌。',
+        photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bb/Table_grapes_on_white.jpg/640px-Table_grapes_on_white.jpg',
+        photoCredit: '攝影：Fir0002 / Wikimedia Commons（授權：GFDL 1.2）',
+        sourceName: '維基百科：葡萄 (Vitis)',
+        sourceUrl: 'https://zh.wikipedia.org/wiki/%E8%91%A1%E8%90%84',
+        npcs: [
+          { name: '藤架爺爺', role: '資深葡萄農', color: '#7209B7', greeting: '葡萄皮上白白的果粉越均勻，代表這串葡萄越新鮮喔！' },
+          { name: '小紫', role: '植物觀察員', color: '#4CC9F0', greeting: '葡萄藤會用捲鬚緊緊攀附在棚架上向上生長！' }
+        ],
+        quiz: {
+          question: '新鮮葡萄表皮上那層白色霧狀的「果粉」是什麼？',
+          options: ['發霉的痕跡', '葡萄自然分泌的天然蠟質保護層', '人工灑上去的糖粉'],
+          answerIndex: 1,
+          explanation: '果粉是葡萄表皮自然分泌的蠟質層，能保護果實減少水分蒸發並抵禦病菌。'
+        }
+      },
+      {
+        id: 'mango',
+        name: '盛夏芒果島',
+        scientificName: 'Mangifera indica',
+        fruitType: 'mango',
+        position: [24, 0.2, 8],
+        radius: 6.6,
+        themeColor: '#FF9E00',
+        badgeIcon: '🥭',
+        badgeName: '熱帶果王專家',
+        summary: '芒果是漆樹科杧果屬的大型常綠喬木果實，原產於南亞印度與緬甸一帶，果肉金黃香甜，富含 β-胡蘿蔔素（維生素 A 前驅物）與維生素 C。',
+        background: '臺灣臺南玉井與屏東枋山等地日照充足，栽培出愛文、金煌、凱特等多樣化優質芒果，是夏季最具代表性的熱帶水果。',
+        funFact: '芒果在植物分類上與腰果、開心果同屬於「漆樹科」，果實中心有一顆非常堅硬且扁平的大果核，緊緊包覆著種子。',
+        photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/Hapus_Mango.jpg/640px-Hapus_Mango.jpg',
+        photoCredit: '攝影：Nikkul / Wikimedia Commons（授權：CC BY-SA 3.0）',
+        sourceName: '農業部：芒果主題館',
+        sourceUrl: 'https://kmweb.moa.gov.tw/subject/index.php?id=19',
+        npcs: [
+          { name: '阿芒伯', role: '愛文果農', color: '#FF5400', greeting: '充足的陽光能讓芒果累積滿滿的甜度與金黃色澤！' },
+          { name: '小夏', role: '冰品研發員', color: '#FFBD00', greeting: '新鮮芒果切塊配上刨冰，是夏天最受歡迎的消暑點心！' }
+        ],
+        quiz: {
+          question: '芒果在植物學分類上與下列哪一種堅果同屬於「漆樹科」？',
+          options: ['核桃', '腰果與開心果', '栗子'],
+          answerIndex: 1,
+          explanation: '芒果、腰果與開心果在植物分類上都屬於漆樹科（Anacardiaceae）。'
+        }
+      },
+      {
+        id: 'pineapple',
+        name: '皇冠鳳梨島',
+        scientificName: 'Ananas comosus',
+        fruitType: 'pineapple',
+        position: [-24, 1.2, 5],
+        radius: 6.8,
+        themeColor: '#F4A261',
+        badgeIcon: '🍍',
+        badgeName: '鳳梨酵素博士',
+        summary: '鳳梨（又稱菠蘿）是鳳梨科鳳梨屬的多年生草本植物，原產於南美洲巴西與巴拉圭一帶，果實由許多小花發育並癒合而成的「聚花果」。',
+        background: '鳳梨耐旱且喜歡溫暖陽光，果肉含有獨特的「鳳梨蛋白酶」（鳳梨酵素），能幫助分解蛋白質，因此常被用來軟化肉質或助消化。',
+        funFact: '吃新鮮鳳梨時舌頭有時會覺得刺刺麻麻的，是因為鳳梨裡的「鳳梨蛋白酶」正在分解口腔黏膜表面的蛋白質，並有微小的草酸鈣針晶！',
+        photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Pineapple_and_cross_section.jpg/640px-Pineapple_and_cross_section.jpg',
+        photoCredit: '攝影：Fir0002 / Wikimedia Commons（授權：GFDL 1.2）',
+        sourceName: '農業部：鳳梨主題館',
+        sourceUrl: 'https://kmweb.moa.gov.tw/subject/index.php?id=18',
+        npcs: [
+          { name: '旺來叔', role: '鳳梨達人', color: '#E9C46A', greeting: '鳳梨頭頂的綠葉叫做「冠芽」，種進土裡還能長出新鳳梨喔！' },
+          { name: '小奇', role: '食品科學家', color: '#2A9D8F', greeting: '鳳梨酵素能分解蛋白質，是天然的嫩肉小幫手！' }
+        ],
+        quiz: {
+          question: '吃新鮮鳳梨時舌頭感到微刺感，主要是因為鳳梨含有什麼成分？',
+          options: ['檸檬酸與果糖', '鳳梨蛋白酶（酵素）與草酸鈣針晶', '大量維生素 D'],
+          answerIndex: 1,
+          explanation: '鳳梨含有鳳梨蛋白酶（Bromelain）會分解口腔蛋白質，加上草酸鈣針晶刺激，因此會產生微刺感。'
+        }
+      }
+    ];
+
+    // =========================================================================
+    // 第二階段：Three.js 3D 渲染引擎初始化與效能自適應
+    // =========================================================================
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0xd8f3dc, 0.0065);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.5, 350);
+    camera.position.set(0, 34, 48);
+
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const renderer = new THREE.WebGLRenderer({ antialias: !isMobile, alpha: true, powerPreference: 'high-performance' });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.08;
+    container.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.maxPolarAngle = Math.PI * 0.47;
+    controls.minDistance = 8;
+    controls.maxDistance = 95;
+
+    // 柔和明亮日光與環境光
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x8ecae6, 0.9);
+    hemiLight.position.set(0, 50, 0);
+    scene.add(hemiLight);
+
+    const dirLight = new THREE.DirectionalLight(0xfff5e4, 1.35);
+    dirLight.position.set(32, 55, 28);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = isMobile ? 1024 : 2048;
+    dirLight.shadow.mapSize.height = isMobile ? 1024 : 2048;
+    dirLight.shadow.camera.near = 10;
+    dirLight.shadow.camera.far = 140;
+    const d = 45;
+    dirLight.shadow.camera.left = -d;
+    dirLight.shadow.camera.right = d;
+    dirLight.shadow.camera.top = d;
+    dirLight.shadow.camera.bottom = -d;
+    dirLight.shadow.bias = -0.0005;
+    scene.add(dirLight);
+
+    // =========================================================================
+    // 立體 Low-Poly 雲朵群
+    // =========================================================================
+    const clouds = [];
+    const cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, flatShading: true });
+    const cloudGeo = new THREE.DodecahedronGeometry(1.8, 0);
+
+    for (let i = 0; i < 16; i++) {
+      const cloudGroup = new THREE.Group();
+      const puffs = 3 + Math.floor(Math.random() * 3);
+      for (let p = 0; p < puffs; p++) {
+        const mesh = new THREE.Mesh(cloudGeo, cloudMat);
+        mesh.position.set((p - puffs / 2) * 1.5, (Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 1.2);
+        const s = 0.7 + Math.random() * 0.6;
+        mesh.scale.set(s, s * 0.75, s);
+        cloudGroup.add(mesh);
+      }
+      cloudGroup.position.set((Math.random() - 0.5) * 110, 10 + Math.random() * 14, (Math.random() - 0.5) * 110);
+      scene.add(cloudGroup);
+      clouds.push({ group: cloudGroup, speed: 0.008 + Math.random() * 0.012 });
+    }
+
+    // =========================================================================
+    // Low-Poly 浮空島與專屬水果地標生成器
+    // =========================================================================
+    const islandGroups = new Map();
+    const clickableMeshes = [];
+    const islandGroundMeshes = [];
+
+    function createFruitLandmark(type) {
+      const group = new THREE.Group();
+      const matOpts = { roughness: 0.45, flatShading: true };
+
+      if (type === 'apple') {
+        const body = new THREE.Mesh(new THREE.DodecahedronGeometry(2.1, 1), new THREE.MeshStandardMaterial({ color: 0xe63946, ...matOpts }));
+        body.scale.set(1.1, 0.95, 1.1);
+        body.position.y = 2.0;
+        body.castShadow = true;
+        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.2, 1.0, 6), new THREE.MeshStandardMaterial({ color: 0x6f4e37, ...matOpts }));
+        stem.position.y = 3.9;
+        const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.55, 1.2, 4), new THREE.MeshStandardMaterial({ color: 0x52b788, ...matOpts }));
+        leaf.position.set(0.5, 4.1, 0);
+        leaf.rotation.z = -Math.PI / 3;
+        group.add(body, stem, leaf);
+      } else if (type === 'banana') {
+        const bananaMat = new THREE.MeshStandardMaterial({ color: 0xffb703, ...matOpts });
+        for (let i = -1; i <= 1; i++) {
+          const curve = new THREE.Mesh(new THREE.TorusGeometry(2.1, 0.48, 6, 12, Math.PI * 0.72), bananaMat);
+          curve.position.set(i * 0.65, 2.3, 0);
+          curve.rotation.z = Math.PI * 0.65;
+          curve.rotation.y = i * 0.25;
+          curve.castShadow = true;
+          group.add(curve);
+        }
+      } else if (type === 'orange') {
+        const body = new THREE.Mesh(new THREE.IcosahedronGeometry(2.05, 1), new THREE.MeshStandardMaterial({ color: 0xf77f00, ...matOpts }));
+        body.position.y = 2.05;
+        body.castShadow = true;
+        const calyx = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.15, 0.3, 5), new THREE.MeshStandardMaterial({ color: 0x2d6a4f, ...matOpts }));
+        calyx.position.y = 4.05;
+        group.add(body, calyx);
+      } else if (type === 'watermelon') {
+        const body = new THREE.Mesh(new THREE.SphereGeometry(2.2, 10, 8), new THREE.MeshStandardMaterial({ color: 0x2d6a4f, ...matOpts }));
+        body.scale.set(1.25, 0.95, 0.95);
+        body.position.y = 2.1;
+        body.castShadow = true;
+        const slice = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.4, 8, 1, false, 0, Math.PI), new THREE.MeshStandardMaterial({ color: 0xff4d6d, ...matOpts }));
+        slice.rotation.z = Math.PI / 2;
+        slice.position.set(1.6, 1.3, 1.3);
+        slice.castShadow = true;
+        group.add(body, slice);
+      } else if (type === 'strawberry') {
+        const body = new THREE.Mesh(new THREE.ConeGeometry(1.9, 3.3, 8), new THREE.MeshStandardMaterial({ color: 0xff4d6d, ...matOpts }));
+        body.rotation.x = Math.PI;
+        body.position.y = 2.1;
+        body.castShadow = true;
+        const crown = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 0.2, 0.45, 6), new THREE.MeshStandardMaterial({ color: 0x40916c, ...matOpts }));
+        crown.position.y = 3.8;
+        group.add(body, crown);
+      } else if (type === 'grape') {
+        const grapeMat = new THREE.MeshStandardMaterial({ color: 0x7209b7, ...matOpts });
+        const positions = [
+          [0, 1.1, 0], [-0.55, 1.8, 0.3], [0.55, 1.8, 0.3], [0, 1.8, -0.55],
+          [-0.85, 2.6, -0.3], [0.85, 2.6, -0.3], [0, 2.6, 0.75], [-0.4, 3.3, 0.3], [0.4, 3.3, 0.3]
+        ];
+        positions.forEach(([x, y, z]) => {
+          const berry = new THREE.Mesh(new THREE.DodecahedronGeometry(0.62, 0), grapeMat);
+          berry.position.set(x, y, z);
+          berry.castShadow = true;
+          group.add(berry);
+        });
+        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 1.0, 5), new THREE.MeshStandardMaterial({ color: 0x6f4e37, ...matOpts }));
+        stem.position.y = 4.0;
+        group.add(stem);
+      } else if (type === 'mango') {
+        const body = new THREE.Mesh(new THREE.SphereGeometry(1.85, 10, 8), new THREE.MeshStandardMaterial({ color: 0xff9e00, ...matOpts }));
+        body.scale.set(0.85, 1.35, 0.95);
+        body.rotation.z = -0.35;
+        body.position.y = 2.2;
+        body.castShadow = true;
+        group.add(body);
+      } else if (type === 'pineapple') {
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(1.35, 1.45, 2.9, 8), new THREE.MeshStandardMaterial({ color: 0xf4a261, ...matOpts }));
+        body.position.y = 1.7;
+        body.castShadow = true;
+        const leafMat = new THREE.MeshStandardMaterial({ color: 0x2a9d8f, ...matOpts });
+        for (let i = 0; i < 6; i++) {
+          const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.45, 1.8, 4), leafMat);
+          const angle = (i / 6) * Math.PI * 2;
+          leaf.position.set(Math.cos(angle) * 0.45, 3.6, Math.sin(angle) * 0.45);
+          leaf.rotation.z = -Math.cos(angle) * 0.45;
+          leaf.rotation.x = Math.sin(angle) * 0.45;
+          group.add(leaf);
+        }
+        group.add(body);
+      }
+      return group;
+    }
+
+    function createLowPolyTree(scale = 1) {
+      const tree = new THREE.Group();
+      const trunk = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.18 * scale, 0.28 * scale, 1.2 * scale, 5),
+        new THREE.MeshStandardMaterial({ color: 0x7f5539, flatShading: true })
+      );
+      trunk.position.y = 0.6 * scale;
+      trunk.castShadow = true;
+
+      const crown = new THREE.Mesh(
+        new THREE.ConeGeometry(1.05 * scale, 2.2 * scale, 6),
+        new THREE.MeshStandardMaterial({ color: 0x52b788, flatShading: true })
+      );
+      crown.position.y = 2.0 * scale;
+      crown.castShadow = true;
+
+      tree.add(trunk, crown);
+      return tree;
+    }
+
+    // 建立 8 座造型各異的浮空島
+    const islandObstacles = new Map();
+
+    FRUIT_ISLANDS.forEach((data, idx) => {
+      const group = new THREE.Group();
+      group.position.set(...data.position);
+      group.userData = { islandId: data.id, baseY: data.position[1], phase: idx * 0.9 };
+
+      // 島嶼底部倒錐形岩石
+      const sides = 7 + (idx % 3);
+      const rockGeo = new THREE.ConeGeometry(data.radius, data.radius * 1.15, sides);
+      const rockMat = new THREE.MeshStandardMaterial({ color: 0x9c6644, roughness: 0.9, flatShading: true });
+      const rock = new THREE.Mesh(rockGeo, rockMat);
+      rock.rotation.x = Math.PI;
+      rock.position.y = -data.radius * 0.57;
+      rock.receiveShadow = true;
+
+      // 島嶼頂部草地平台
+      const grassGeo = new THREE.CylinderGeometry(data.radius, data.radius * 0.96, 0.75, sides);
+      const grassMat = new THREE.MeshStandardMaterial({ color: 0x74c69d, roughness: 0.8, flatShading: true });
+      const grass = new THREE.Mesh(grassGeo, grassMat);
+      grass.position.y = 0;
+      grass.receiveShadow = true;
+      grass.userData = { type: 'ground', islandId: data.id };
+      islandGroundMeshes.push(grass);
+
+      // 中央代表水果地標（點擊可開啟百科）
+      const landmark = createFruitLandmark(data.fruitType);
+      landmark.position.y = 0.35;
+      landmark.traverse((child) => {
+        if (child.isMesh) {
+          child.userData = { type: 'islandLandmark', islandId: data.id };
+          clickableMeshes.push(child);
+        }
+      });
+
+      const obstacles = [{ x: 0, z: 0, r: 2.5 }];
+
+      // 周圍裝飾樹木與花叢
+      for (let t = 0; t < 4; t++) {
+        const angle = (t / 4) * Math.PI * 2 + idx * 0.5;
+        const dist = data.radius * 0.66;
+        const tx = Math.cos(angle) * dist;
+        const tz = Math.sin(angle) * dist;
+        const tree = createLowPolyTree(0.85 + (t % 2) * 0.25);
+        tree.position.set(tx, 0.35, tz);
+        group.add(tree);
+        obstacles.push({ x: tx, z: tz, r: 1.0 });
+      }
+
+      // 裝飾石塊與小花
+      const flowerColors = [0xffbe0b, 0xfb5607, 0xff006e, 0xffffff];
+      for (let f = 0; f < 6; f++) {
+        const a = (f / 6) * Math.PI * 2 + 0.3;
+        const r = data.radius * (0.45 + (f % 3) * 0.15);
+        const flower = new THREE.Mesh(
+          new THREE.DodecahedronGeometry(0.24, 0),
+          new THREE.MeshStandardMaterial({ color: flowerColors[f % flowerColors.length], flatShading: true })
+        );
+        flower.position.set(Math.cos(a) * r, 0.45, Math.sin(a) * r);
+        group.add(flower);
+      }
+
+      group.add(rock, grass, landmark);
+      scene.add(group);
+      islandGroups.set(data.id, group);
+      islandObstacles.set(data.id, obstacles);
+    });
+
+    // =========================================================================
+    // 第四階段：NPC 系統（島內避障走動 + 跨橋移動 + 點擊互動）
+    // =========================================================================
+    const npcs = [];
+    const bridges = []; // { id, fromId, toId, mesh, startLocal, endLocal, worldStart, worldEnd }
+
+    function createNPCMesh(colorHex) {
+      const npcGroup = new THREE.Group();
+      const bodyMat = new THREE.MeshStandardMaterial({ color: colorHex, flatShading: true });
+      const skinMat = new THREE.MeshStandardMaterial({ color: 0xffddb3, flatShading: true });
+      const hatMat = new THREE.MeshStandardMaterial({ color: 0xffffff, flatShading: true });
+
+      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.32, 0.65, 6), bodyMat);
+      torso.position.y = 0.65;
+      torso.castShadow = true;
+
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 8, 8), skinMat);
+      head.position.y = 1.18;
+      head.castShadow = true;
+
+      const hat = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.25, 6), hatMat);
+      hat.position.y = 1.44;
+
+      const legGeo = new THREE.BoxGeometry(0.12, 0.36, 0.12);
+      const legMat = new THREE.MeshStandardMaterial({ color: 0x2b2d42, flatShading: true });
+      const leftLeg = new THREE.Mesh(legGeo, legMat);
+      leftLeg.position.set(-0.11, 0.18, 0);
+      const rightLeg = new THREE.Mesh(legGeo, legMat);
+      rightLeg.position.set(0.11, 0.18, 0);
+
+      npcGroup.add(torso, head, hat, leftLeg, rightLeg);
+      npcGroup.userData = { leftLeg, rightLeg };
+      return npcGroup;
+    }
+
+    FRUIT_ISLANDS.forEach((island) => {
+      const parentGroup = islandGroups.get(island.id);
+      island.npcs.forEach((npcInfo, nIdx) => {
+        const mesh = createNPCMesh(npcInfo.color);
+        const startAngle = nIdx * Math.PI + 0.6;
+        const startDist = island.radius * 0.48;
+        mesh.position.set(Math.cos(startAngle) * startDist, 0.38, Math.sin(startAngle) * startDist);
+        parentGroup.add(mesh);
+
+        const npcObj = {
+          id: `${island.id}_npc_${nIdx}`,
+          islandId: island.id,
+          name: npcInfo.name,
+          role: npcInfo.role,
+          greeting: npcInfo.greeting,
+          mesh,
+          targetPos: mesh.position.clone(),
+          waitTimer: Math.random() * 2,
+          walkPhase: Math.random() * Math.PI * 2,
+          crossingBridge: null,
+          bridgeProgress: 0
+        };
+
+        mesh.traverse((child) => {
+          if (child.isMesh) {
+            child.userData = { type: 'npc', npc: npcObj };
+            clickableMeshes.push(child);
+          }
+        });
+
+        npcs.push(npcObj);
+      });
+    });
+
+    function pickNextNPCTarget(npc) {
+      const islandData = FRUIT_ISLANDS.find((i) => i.id === npc.islandId);
+      const obstacles = islandObstacles.get(npc.islandId) || [];
+
+      // 若該島有連外橋梁，35% 機率決定跨橋前往相鄰島嶼
+      const connectedBridges = bridges.filter((b) => b.fromId === npc.islandId || b.toId === npc.islandId);
+      if (connectedBridges.length > 0 && Math.random() < 0.35) {
+        const bridge = connectedBridges[Math.floor(Math.random() * connectedBridges.length)];
+        npc.crossingBridge = bridge;
+        npc.bridgeDirection = bridge.fromId === npc.islandId ? 1 : -1;
+        npc.bridgeProgress = 0;
+        // 轉換到世界座標進行跨橋移動
+        const worldPos = new THREE.Vector3();
+        npc.mesh.getWorldPosition(worldPos);
+        scene.add(npc.mesh);
+        npc.mesh.position.copy(worldPos);
+        return;
+      }
+
+      // 島內安全隨機目標點（避開中央地標與樹木障礙）
+      for (let attempt = 0; attempt < 15; attempt++) {
+        const angle = Math.random() * Math.PI * 2;
+        const r = 2.8 + Math.random() * (islandData.radius - 3.6);
+        const tx = Math.cos(angle) * r;
+        const tz = Math.sin(angle) * r;
+        const hitObstacle = obstacles.some((obs) => Math.hypot(tx - obs.x, tz - obs.z) < obs.r + 0.6);
+        if (!hitObstacle) {
+          npc.targetPos.set(tx, 0.38, tz);
+          return;
+        }
+      }
+    }
+
+    // =========================================================================
+    // 第六、七階段：島嶼創意建造工坊與跨島橋梁系統
+    // =========================================================================
+    const BUILD_ITEMS = [
+      { id: 'tree', name: '果園小樹', emoji: '🌳' },
+      { id: 'house', name: '糖果小屋', emoji: '🏠' },
+      { id: 'flower', name: '繽紛花圃', emoji: '🌻' },
+      { id: 'lamp', name: '暖光路燈', emoji: '🏮' },
+      { id: 'bench', name: '木頭長椅', emoji: '🪑' },
+      { id: 'stall', name: '果汁攤位', emoji: '🍹' },
+      { id: 'balloon', name: '慶典氣球', emoji: '🎈' },
+      { id: 'bridge', name: '跨島木橋', emoji: '🌉' }
+    ];
+
+    let workshopOpen = false;
+    let activeTool = null; // null = 選取模式, 否則為 BUILD_ITEMS id
+    let selectedBuiltObject = null;
+    let bridgeFirstIsland = null;
+    const builtObjects = []; // { id, type, islandId, pos, rotY, mesh }
+    const undoStack = [];
+    const redoStack = [];
+
+    function createBuildableMesh(type) {
+      const g = new THREE.Group();
+      const opts = { flatShading: true };
+
+      if (type === 'tree') {
+        return createLowPolyTree(0.95);
+      } else if (type === 'house') {
+        const base = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.2, 1.5), new THREE.MeshStandardMaterial({ color: 0xfff3b0, ...opts }));
+        base.position.y = 0.6;
+        base.castShadow = true;
+        const roof = new THREE.Mesh(new THREE.ConeGeometry(1.25, 1.0, 4), new THREE.MeshStandardMaterial({ color: 0xe63946, ...opts }));
+        roof.position.y = 1.7;
+        roof.rotation.y = Math.PI / 4;
+        roof.castShadow = true;
+        g.add(base, roof);
+      } else if (type === 'flower') {
+        const box = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.25, 0.7), new THREE.MeshStandardMaterial({ color: 0x8d5524, ...opts }));
+        box.position.y = 0.125;
+        g.add(box);
+        [0xff595e, 0xffca3a, 0x8ac926].forEach((c, i) => {
+          const fl = new THREE.Mesh(new THREE.DodecahedronGeometry(0.24, 0), new THREE.MeshStandardMaterial({ color: c, ...opts }));
+          fl.position.set((i - 1) * 0.4, 0.35, 0);
+          g.add(fl);
+        });
+      } else if (type === 'lamp') {
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 1.8, 6), new THREE.MeshStandardMaterial({ color: 0x2b2d42, ...opts }));
+        post.position.y = 0.9;
+        const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.26, 6, 6), new THREE.MeshStandardMaterial({ color: 0xffd166, emissive: 0xff9f1c, emissiveIntensity: 0.6 }));
+        bulb.position.y = 1.9;
+        g.add(post, bulb);
+      } else if (type === 'bench') {
+        const seat = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.14, 0.5), new THREE.MeshStandardMaterial({ color: 0xbc6c25, ...opts }));
+        seat.position.y = 0.42;
+        const back = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.4, 0.1), new THREE.MeshStandardMaterial({ color: 0xdda15e, ...opts }));
+        back.position.set(0, 0.68, -0.2);
+        g.add(seat, back);
+      } else if (type === 'stall') {
+        const counter = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.85, 0.9), new THREE.MeshStandardMaterial({ color: 0xf4a261, ...opts }));
+        counter.position.y = 0.425;
+        const canopy = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.2, 1.1), new THREE.MeshStandardMaterial({ color: 0x2ec4b6, ...opts }));
+        canopy.position.y = 1.75;
+        g.add(counter, canopy);
+      } else if (type === 'balloon') {
+        const str = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.4, 4), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+        str.position.y = 0.7;
+        const bal = new THREE.Mesh(new THREE.SphereGeometry(0.45, 8, 8), new THREE.MeshStandardMaterial({ color: 0xff4d6d, ...opts }));
+        bal.scale.set(1, 1.2, 1);
+        bal.position.y = 1.7;
+        g.add(str, bal);
+      }
+      return g;
+    }
+
+    // 放置預覽模型
+    const previewGroup = new THREE.Group();
+    previewGroup.visible = false;
+    scene.add(previewGroup);
+
+    function updatePreviewMesh(type) {
+      while (previewGroup.children.length) previewGroup.remove(previewGroup.children[0]);
+      if (!type || type === 'bridge') {
+        previewGroup.visible = false;
+        return;
+      }
+      const m = createBuildableMesh(type);
+      m.traverse((c) => {
+        if (c.isMesh) {
+          c.material = c.material.clone();
+          c.material.transparent = true;
+          c.material.opacity = 0.55;
+        }
+      });
+      previewGroup.add(m);
+      previewGroup.visible = true;
+    }
+
+    function createBridgeBetweenIslands(fromId, toId, recordUndo = true) {
+      if (fromId === toId) {
+        showToast('⚠️ 請選擇兩座不同的島嶼進行連接！');
+        return false;
+      }
+      const exists = bridges.some(
+        (b) => (b.fromId === fromId && b.toId === toId) || (b.fromId === toId && b.toId === fromId)
+      );
+      if (exists) {
+        showToast('ℹ️ 這兩座島嶼已經有橋梁連接囉！');
+        return false;
+      }
+
+      const d1 = FRUIT_ISLANDS.find((i) => i.id === fromId);
+      const d2 = FRUIT_ISLANDS.find((i) => i.id === toId);
+      const p1 = new THREE.Vector3(...d1.position);
+      const p2 = new THREE.Vector3(...d2.position);
+      const dist = p1.distanceTo(p2);
+
+      if (dist > 34) {
+        showToast('⚠️ 兩座島距離太遠，無法架設安全木橋！');
+        return false;
+      }
+
+      const dir = p2.clone().sub(p1).normalize();
+      const startPt = p1.clone().addScaledVector(dir, d1.radius * 0.85);
+      const endPt = p2.clone().addScaledVector(dir, -d2.radius * 0.85);
+      startPt.y += 0.4;
+      endPt.y += 0.4;
+
+      const span = startPt.distanceTo(endPt);
+      const mid = startPt.clone().add(endPt).multiplyScalar(0.5);
+
+      const bridgeGroup = new THREE.Group();
+      bridgeGroup.position.copy(mid);
+      bridgeGroup.lookAt(endPt);
+
+      const plankMat = new THREE.MeshStandardMaterial({ color: 0xb08968, flatShading: true });
+      const railMat = new THREE.MeshStandardMaterial({ color: 0x7f5539, flatShading: true });
+
+      const deck = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.18, span), plankMat);
+      deck.receiveShadow = true;
+      deck.castShadow = true;
+
+      const leftRail = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.55, span), railMat);
+      leftRail.position.set(-0.7, 0.32, 0);
+      const rightRail = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.55, span), railMat);
+      rightRail.position.set(0.7, 0.32, 0);
+
+      bridgeGroup.add(deck, leftRail, rightRail);
+      scene.add(bridgeGroup);
+
+      const bridgeObj = {
+        id: `bridge_${fromId}_${toId}`,
+        fromId,
+        toId,
+        mesh: bridgeGroup,
+        worldStart: startPt,
+        worldEnd: endPt
+      };
+      bridges.push(bridgeObj);
+
+      if (recordUndo) {
+        undoStack.push({ kind: 'bridge', data: bridgeObj });
+        redoStack.length = 0;
+        saveUserState();
+      }
+      showToast(`🌉 成功建造「${d1.name} ↔ ${d2.name}」跨島木橋！`);
+      return true;
+    }
+
+    function placeBuiltObject(type, islandId, localPos, rotY = 0, recordUndo = true) {
+      const mesh = createBuildableMesh(type);
+      mesh.position.copy(localPos);
+      mesh.rotation.y = rotY;
+      const parent = islandGroups.get(islandId);
+      parent.add(mesh);
+
+      const itemObj = {
+        id: `obj_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        type,
+        islandId,
+        pos: [localPos.x, localPos.y, localPos.z],
+        rotY,
+        mesh
+      };
+
+      mesh.traverse((c) => {
+        if (c.isMesh) {
+          c.userData = { type: 'builtObject', builtItem: itemObj };
+          clickableMeshes.push(c);
+        }
+      });
+
+      builtObjects.push(itemObj);
+      if (recordUndo) {
+        undoStack.push({ kind: 'object', data: itemObj });
+        redoStack.length = 0;
+        saveUserState();
+      }
+      return itemObj;
+    }
+
+    // =========================================================================
+    // 本地儲存與學習進度管理
+    // =========================================================================
+    const STORAGE_KEY = 'fruit_islands_save_v1';
+    let completedIslands = new Set();
+
+    function loadUserState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed.completed)) {
+          completedIslands = new Set(parsed.completed);
+        }
+        if (Array.isArray(parsed.objects)) {
+          parsed.objects.forEach((o) => {
+            placeBuiltObject(o.type, o.islandId, new THREE.Vector3(...o.pos), o.rotY, false);
+          });
+        }
+        if (Array.isArray(parsed.bridges)) {
+          parsed.bridges.forEach((b) => {
+            createBridgeBetweenIslands(b.fromId, b.toId, false);
+          });
+        }
+      } catch (e) {
+        console.warn('讀取本機進度失敗', e);
+      }
+    }
+
+    function saveUserState() {
+      try {
+        const payload = {
+          completed: Array.from(completedIslands),
+          objects: builtObjects.map((o) => ({
+            type: o.type,
+            islandId: o.islandId,
+            pos: o.pos,
+            rotY: o.rotY
+          })),
+          bridges: bridges.map((b) => ({ fromId: b.fromId, toId: b.toId }))
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      } catch (e) {
+        console.warn('儲存本機進度失敗', e);
+      }
+    }
+
+    // =========================================================================
+    // UI 渲染與互動控制
+    // =========================================================================
+    const toastEl = document.getElementById('toast');
+    let toastTimer = null;
+    function showToast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2600);
+    }
+
+    function renderSidebarProgress() {
+      const total = FRUIT_ISLANDS.length;
+      const count = completedIslands.size;
+      const pct = Math.round((count / total) * 100);
+      document.getElementById('progress-text').textContent = `${count} / ${total} (${pct}%)`;
+      document.getElementById('progress-fill').style.width = `${pct}%`;
+
+      const badgeGrid = document.getElementById('badge-grid');
+      badgeGrid.innerHTML = '';
+      FRUIT_ISLANDS.forEach((isl) => {
+        const unlocked = completedIslands.has(isl.id);
+        const div = document.createElement('div');
+        div.className = `badge-item ${unlocked ? 'unlocked' : ''}`;
+        div.title = unlocked ? `已獲得：${isl.badgeName}` : `尚未解鎖：${isl.name}`;
+        div.innerHTML = `<div>${isl.badgeIcon}</div><span>${unlocked ? isl.badgeName : '未解鎖'}</span>`;
+        div.onclick = () => focusOnIsland(isl.id, true);
+        badgeGrid.appendChild(div);
+      });
+
+      const listEl = document.getElementById('island-list');
+      listEl.innerHTML = '';
+      FRUIT_ISLANDS.forEach((isl) => {
+        const done = completedIslands.has(isl.id);
+        const btn = document.createElement('button');
+        btn.className = `island-nav-btn ${done ? 'completed' : ''}`;
+        btn.innerHTML = `
+          <span>${isl.badgeIcon} ${isl.name}</span>
+          <span class="status-dot">${done ? '✓ 已完成' : '待探索'}</span>
+        `;
+        btn.onclick = () => focusOnIsland(isl.id, true);
+        listEl.appendChild(btn);
+      });
+    }
+
+    function openIslandDrawer(islandId) {
+      const data = FRUIT_ISLANDS.find((i) => i.id === islandId);
+      if (!data) return;
+
+      const drawer = document.getElementById('right-drawer');
+      const header = document.getElementById('drawer-header');
+      header.style.background = data.themeColor;
+      document.getElementById('drawer-title').textContent = `${data.badgeIcon} ${data.name}`;
+      document.getElementById('drawer-sci').textContent = data.scientificName;
+
+      const isDone = completedIslands.has(data.id);
+      const body = document.getElementById('drawer-body');
+      body.innerHTML = `
+        <div class="photo-frame">
+          <img src="${data.photoUrl}" alt="${data.name}" loading="lazy" />
+          <div class="photo-caption">${data.photoCredit}</div>
+        </div>
+
+        <div class="info-section">
+          <h4>📖 植物與果實簡介</h4>
+          <p>${data.summary}</p>
+        </div>
+
+        <div class="info-section">
+          <h4>🌍 起源與栽培背景</h4>
+          <p>${data.background}</p>
+        </div>
+
+        <div class="fun-fact-box">
+          <strong>💡 有趣的科學小知識：</strong><br/>
+          ${data.funFact}
+        </div>
+
+        <a class="source-link" href="${data.sourceUrl}" target="_blank" rel="noopener noreferrer">
+          🔗 可核實資料來源：${data.sourceName} ↗
+        </a>
+
+        <div class="quiz-card">
+          <div style="font-weight:800; font-size:0.92rem; color:#166534; margin-bottom:4px;">
+            🎯 島嶼探索挑戰 ${isDone ? '（🏅 已取得徽章）' : ''}
+          </div>
+          <p style="font-size:0.86rem; font-weight:600;">${data.quiz.question}</p>
+          <div id="quiz-options"></div>
+          <div id="quiz-feedback" style="margin-top:8px; font-size:0.82rem; font-weight:700;"></div>
+        </div>
+      `;
+
+      const optsContainer = body.querySelector('#quiz-options');
+      const feedbackEl = body.querySelector('#quiz-feedback');
+      data.quiz.options.forEach((optText, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'quiz-option';
+        btn.textContent = `${['A', 'B', 'C'][idx]}. ${optText}`;
+        if (isDone && idx === data.quiz.answerIndex) {
+          btn.classList.add('correct');
+        }
+        btn.onclick = () => {
+          optsContainer.querySelectorAll('.quiz-option').forEach((b) => b.classList.remove('correct', 'wrong'));
+          if (idx === data.quiz.answerIndex) {
+            btn.classList.add('correct');
+            feedbackEl.style.color = '#15803D';
+            feedbackEl.textContent = `🎉 答對了！獲得「${data.badgeName}」徽章！${data.quiz.explanation}`;
+            completedIslands.add(data.id);
+            saveUserState();
+            renderSidebarProgress();
+          } else {
+            btn.classList.add('wrong');
+            feedbackEl.style.color = '#B91C1C';
+            feedbackEl.textContent = '🤔 再想想看，上方小知識裡有線索喔！';
+          }
+        };
+        optsContainer.appendChild(btn);
+      });
+
+      drawer.classList.add('open');
+    }
+
+    function openNPCDialog(npc) {
+      document.getElementById('npc-name').textContent = `🧑 ${npc.name}`;
+      document.getElementById('npc-role').textContent = npc.role;
+      document.getElementById('npc-text').textContent = npc.greeting;
+      const openBtn = document.getElementById('npc-open-island-btn');
+      openBtn.onclick = () => {
+        document.getElementById('npc-dialog').classList.remove('open');
+        openIslandDrawer(npc.islandId);
+      };
+      document.getElementById('npc-dialog').classList.add('open');
+    }
+
+    // 平滑相機移動
+    function animateCameraTo(targetPos, camPos, duration = 1100) {
+      new TWEEN.Tween(controls.target)
+        .to({ x: targetPos.x, y: targetPos.y, z: targetPos.z }, duration)
+        .easing(TWEEN.Easing.Cubic.InOut)
+        .start();
+
+      new TWEEN.Tween(camera.position)
+        .to({ x: camPos.x, y: camPos.y, z: camPos.z }, duration)
+        .easing(TWEEN.Easing.Cubic.InOut)
+        .start();
+    }
+
+    function focusOnIsland(islandId, openPanel = false) {
+      const data = FRUIT_ISLANDS.find((i) => i.id === islandId);
+      if (!data) return;
+      const target = new THREE.Vector3(data.position[0], data.position[1] + 1.5, data.position[2]);
+      const camPos = new THREE.Vector3(data.position[0], data.position[1] + 11, data.position[2] + 15);
+      animateCameraTo(target, camPos);
+      if (openPanel) {
+        openIslandDrawer(islandId);
+      }
+    }
+
+    function resetCameraOverview() {
+      animateCameraTo(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 34, 48));
+    }
+
+    // =========================================================================
+    // 建造工坊 UI 初始化
+    // =========================================================================
+    const workshopToolsEl = document.getElementById('workshop-tools');
+    BUILD_ITEMS.forEach((item) => {
+      const btn = document.createElement('button');
+      btn.className = 'tool-item';
+      btn.dataset.toolId = item.id;
+      btn.innerHTML = `<span class="emoji">${item.emoji}</span><span>${item.name}</span>`;
+      btn.onclick = () => {
+        workshopToolsEl.querySelectorAll('.tool-item').forEach((el) => el.classList.remove('selected'));
+        btn.classList.add('selected');
+        activeTool = item.id;
+        bridgeFirstIsland = null;
+        updatePreviewMesh(activeTool);
+        if (activeTool === 'bridge') {
+          showToast('🌉 請依序點擊兩座島嶼以架設跨島木橋');
+        } else {
+          showToast(`✨ 已選擇「${item.name}」，點擊島嶼草地即可放置`);
+        }
+      };
+      workshopToolsEl.appendChild(btn);
+    });
+
+    document.getElementById('tool-select-btn').onclick = () => {
+      activeTool = null;
+      bridgeFirstIsland = null;
+      updatePreviewMesh(null);
+      workshopToolsEl.querySelectorAll('.tool-item').forEach((el) => el.classList.remove('selected'));
+      showToast('👆 已切換為「選取模式」，點擊自建物件可旋轉或刪除');
+    };
+
+    document.getElementById('tool-rotate-btn').onclick = () => {
+      if (!selectedBuiltObject) {
+        showToast('ℹ️ 請先在選取模式下點擊一個自建物件');
+        return;
+      }
+      selectedBuiltObject.rotY += Math.PI / 4;
+      selectedBuiltObject.mesh.rotation.y = selectedBuiltObject.rotY;
+      saveUserState();
+    };
+
+    document.getElementById('tool-delete-btn').onclick = () => {
+      if (!selectedBuiltObject) {
+        showToast('ℹ️ 請先在選取模式下點擊一個自建物件');
+        return;
+      }
+      const idx = builtObjects.indexOf(selectedBuiltObject);
+      if (idx > -1) builtObjects.splice(idx, 1);
+      selectedBuiltObject.mesh.parent.remove(selectedBuiltObject.mesh);
+      selectedBuiltObject = null;
+      saveUserState();
+      showToast('🗑️ 已刪除選取的自建物件');
+    };
+
+    document.getElementById('tool-undo-btn').onclick = () => {
+      const action = undoStack.pop();
+      if (!action) {
+        showToast('ℹ️ 沒有可撤銷的建造步驟');
+        return;
+      }
+      redoStack.push(action);
+      if (action.kind === 'object') {
+        const idx = builtObjects.indexOf(action.data);
+        if (idx > -1) builtObjects.splice(idx, 1);
+        action.data.mesh.parent.remove(action.data.mesh);
+      } else if (action.kind === 'bridge') {
+        const idx = bridges.indexOf(action.data);
+        if (idx > -1) bridges.splice(idx, 1);
+        scene.remove(action.data.mesh);
+      }
+      saveUserState();
+      showToast('↩️ 已撤銷上一步建造');
+    };
+
+    document.getElementById('tool-redo-btn').onclick = () => {
+      const action = redoStack.pop();
+      if (!action) {
+        showToast('ℹ️ 沒有可重做的建造步驟');
+        return;
+      }
+      undoStack.push(action);
+      if (action.kind === 'object') {
+        islandGroups.get(action.data.islandId).add(action.data.mesh);
+        builtObjects.push(action.data);
+      } else if (action.kind === 'bridge') {
+        scene.add(action.data.mesh);
+        bridges.push(action.data);
+      }
+      saveUserState();
+      showToast('↪️ 已恢復建造步驟');
+    };
+
+    document.getElementById('tool-clear-btn').onclick = () => {
+      builtObjects.forEach((o) => o.mesh.parent.remove(o.mesh));
+      builtObjects.length = 0;
+      bridges.forEach((b) => scene.remove(b.mesh));
+      bridges.length = 0;
+      undoStack.length = 0;
+      redoStack.length = 0;
+      saveUserState();
+      showToast('🧹 已清空所有自建物件與橋梁');
+    };
+
+    // =========================================================================
+    // Raycasting 滑鼠與觸控互動
+    // =========================================================================
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    let pointerDownPos = { x: 0, y: 0 };
+
+    function updatePointerCoords(clientX, clientY) {
+      pointer.x = (clientX / window.innerWidth) * 2 - 1;
+      pointer.y = -(clientY / window.innerHeight) * 2 + 1;
+    }
+
+    renderer.domElement.addEventListener('pointermove', (e) => {
+      if (!workshopOpen || !activeTool || activeTool === 'bridge') return;
+      updatePointerCoords(e.clientX, e.clientY);
+      raycaster.setFromCamera(pointer, camera);
+      const hits = raycaster.intersectObjects(islandGroundMeshes, false);
+      if (hits.length > 0) {
+        previewGroup.visible = true;
+        previewGroup.position.copy(hits[0].point);
+        previewGroup.position.y += 0.38;
+      } else {
+        previewGroup.visible = false;
+      }
+    });
+
+    renderer.domElement.addEventListener('pointerdown', (e) => {
+      pointerDownPos = { x: e.clientX, y: e.clientY };
+    });
+
+    renderer.domElement.addEventListener('pointerup', (e) => {
+      const dist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
+      if (dist > 6) return; // 忽略拖曳旋轉鏡頭
+
+      updatePointerCoords(e.clientX, e.clientY);
+      raycaster.setFromCamera(pointer, camera);
+
+      // 工坊建造模式
+      if (workshopOpen) {
+        if (activeTool === 'bridge') {
+          const groundHits = raycaster.intersectObjects(islandGroundMeshes, false);
+          if (groundHits.length > 0) {
+            const hitIslandId = groundHits[0].object.userData.islandId;
+            if (!bridgeFirstIsland) {
+              bridgeFirstIsland = hitIslandId;
+              const d = FRUIT_ISLANDS.find((i) => i.id === hitIslandId);
+              showToast(`🌉 起點：${d.name}，請點擊第二座島嶼！`);
+            } else {
+              createBridgeBetweenIslands(bridgeFirstIsland, hitIslandId, true);
+              bridgeFirstIsland = null;
+            }
+          }
+          return;
+        } else if (activeTool) {
+          const groundHits = raycaster.intersectObjects(islandGroundMeshes, false);
+          if (groundHits.length > 0) {
+            const hit = groundHits[0];
+            const islandId = hit.object.userData.islandId;
+            const islandGroup = islandGroups.get(islandId);
+            const localPt = islandGroup.worldToLocal(hit.point.clone());
+            localPt.y = 0.38;
+            if (localPt.length() < 2.2) {
+              showToast('⚠️ 離中央水果地標太近囉，請放在外側草地上！');
+              return;
+            }
+            placeBuiltObject(activeTool, islandId, localPt, 0, true);
+          }
+          return;
+        }
+      }
+
+      // 一般探索與選取模式
+      const hits = raycaster.intersectObjects(clickableMeshes, false);
+      if (hits.length > 0) {
+        const uData = hits[0].object.userData;
+        if (uData.type === 'islandLandmark') {
+          focusOnIsland(uData.islandId, true);
+        } else if (uData.type === 'npc') {
+          const worldPos = new THREE.Vector3();
+          uData.npc.mesh.getWorldPosition(worldPos);
+          animateCameraTo(worldPos, worldPos.clone().add(new THREE.Vector3(0, 5, 8)), 850);
+          openNPCDialog(uData.npc);
+        } else if (uData.type === 'builtObject' && workshopOpen) {
+          selectedBuiltObject = uData.builtItem;
+          showToast('✨ 已選取自建物件，可使用下方按鈕旋轉或刪除');
+        }
+      }
+    });
+
+    // =========================================================================
+    // 自動導覽系統
+    // =========================================================================
+    let tourActive = false;
+    let tourPaused = false;
+    let tourIndex = -1; // -1 代表全景總覽
+    let tourTimer = null;
+
+    function runTourStep() {
+      if (!tourActive || tourPaused) return;
+      clearTimeout(tourTimer);
+
+      const labelEl = document.getElementById('tour-label');
+      if (tourIndex === -1) {
+        labelEl.textContent = '🚁 群島全景鳥瞰導覽';
+        resetCameraOverview();
+      } else {
+        const isl = FRUIT_ISLANDS[tourIndex];
+        labelEl.textContent = `🏝️ (${tourIndex + 1}/${FRUIT_ISLANDS.length}) ${isl.badgeIcon} ${isl.name}`;
+        focusOnIsland(isl.id, false);
+      }
+
+      tourTimer = setTimeout(() => {
+        if (!tourActive || tourPaused) return;
+        tourIndex++;
+        if (tourIndex >= FRUIT_ISLANDS.length) {
+          tourIndex = -1;
+        }
+        runTourStep();
+      }, 4500);
+    }
+
+    document.getElementById('start-tour-btn').onclick = () => {
+      tourActive = true;
+      tourPaused = false;
+      tourIndex = -1;
+      document.getElementById('tour-bar').classList.add('active');
+      document.getElementById('tour-pause-btn').textContent = '⏸ 暫停';
+      runTourStep();
+    };
+
+    document.getElementById('tour-pause-btn').onclick = () => {
+      tourPaused = !tourPaused;
+      document.getElementById('tour-pause-btn').textContent = tourPaused ? '▶ 繼續' : '⏸ 暫停';
+      if (!tourPaused) runTourStep();
+    };
+
+    document.getElementById('tour-prev-btn').onclick = () => {
+      tourIndex = tourIndex <= -1 ? FRUIT_ISLANDS.length - 1 : tourIndex - 1;
+      runTourStep();
+    };
+
+    document.getElementById('tour-next-btn').onclick = () => {
+      tourIndex = tourIndex >= FRUIT_ISLANDS.length - 1 ? -1 : tourIndex + 1;
+      runTourStep();
+    };
+
+    document.getElementById('tour-stop-btn').onclick = () => {
+      tourActive = false;
+      clearTimeout(tourTimer);
+      document.getElementById('tour-bar').classList.remove('active');
+    };
+
+    // =========================================================================
+    // 介面按鈕事件綁定
+    // =========================================================================
+    const leftSidebar = document.getElementById('left-sidebar');
+    const expandBtn = document.getElementById('expand-sidebar-btn');
+
+    document.getElementById('collapse-sidebar-btn').onclick = () => {
+      leftSidebar.classList.add('collapsed');
+      expandBtn.classList.add('visible');
+    };
+
+    expandBtn.onclick = () => {
+      leftSidebar.classList.remove('collapsed');
+      expandBtn.classList.remove('visible');
+    };
+
+    document.getElementById('close-drawer-btn').onclick = () => {
+      document.getElementById('right-drawer').classList.remove('open');
+    };
+
+    document.getElementById('close-npc-btn').onclick = () => {
+      document.getElementById('npc-dialog').classList.remove('open');
+    };
+
+    document.getElementById('reset-cam-btn').onclick = resetCameraOverview;
+
+    const workshopBar = document.getElementById('workshop-bar');
+    document.getElementById('toggle-workshop-btn').onclick = () => {
+      workshopOpen = !workshopOpen;
+      workshopBar.classList.toggle('active', workshopOpen);
+      if (!workshopOpen) {
+        activeTool = null;
+        updatePreviewMesh(null);
+      }
+    };
+
+    document.getElementById('close-workshop-btn').onclick = () => {
+      workshopOpen = false;
+      activeTool = null;
+      updatePreviewMesh(null);
+      workshopBar.classList.remove('active');
+    };
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // =========================================================================
+    // 主動畫迴圈
+    // =========================================================================
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = Math.min(clock.getDelta(), 0.05);
+      const elapsed = clock.getElapsedTime();
+
+      TWEEN.update();
+      controls.update();
+
+      // 1. 浮空島輕微上下漂浮
+      islandGroups.forEach((group) => {
+        const { baseY, phase } = group.userData;
+        group.position.y = baseY + Math.sin(elapsed * 1.1 + phase) * 0.25;
+      });
+
+      // 2. 雲朵緩慢飄動
+      clouds.forEach((c) => {
+        c.group.position.x += c.speed;
+        if (c.group.position.x > 60) c.group.position.x = -60;
+      });
+
+      // 3. NPC 自主巡邏與跨橋動畫
+      npcs.forEach((npc) => {
+        const { leftLeg, rightLeg } = npc.mesh.userData;
+
+        // 跨橋移動邏輯
+        if (npc.crossingBridge) {
+          const b = npc.crossingBridge;
+          npc.bridgeProgress += dt * 0.28;
+          const t = npc.bridgeDirection === 1 ? npc.bridgeProgress : 1 - npc.bridgeProgress;
+          const pos = new THREE.Vector3().lerpVectors(b.worldStart, b.worldEnd, Math.min(Math.max(t, 0), 1));
+          npc.mesh.position.copy(pos);
+
+          const lookTarget = npc.bridgeDirection === 1 ? b.worldEnd : b.worldStart;
+          npc.mesh.lookAt(lookTarget.x, npc.mesh.position.y, lookTarget.z);
+
+          npc.walkPhase += dt * 12;
+          leftLeg.rotation.x = Math.sin(npc.walkPhase) * 0.6;
+          rightLeg.rotation.x = -Math.sin(npc.walkPhase) * 0.6;
+
+          if (npc.bridgeProgress >= 1) {
+            const destIslandId = npc.bridgeDirection === 1 ? b.toId : b.fromId;
+            const destGroup = islandGroups.get(destIslandId);
+            const localPos = destGroup.worldToLocal(npc.mesh.position.clone());
+            localPos.y = 0.38;
+            destGroup.add(npc.mesh);
+            npc.mesh.position.copy(localPos);
+            npc.islandId = destIslandId;
+            npc.crossingBridge = null;
+            pickNextNPCTarget(npc);
+          }
+          return;
+        }
+
+        // 島內巡邏與避障
+        const dist = npc.mesh.position.distanceTo(npc.targetPos);
+        if (dist < 0.2) {
+          leftLeg.rotation.x = 0;
+          rightLeg.rotation.x = 0;
+          npc.waitTimer -= dt;
+          if (npc.waitTimer <= 0) {
+            npc.waitTimer = 1.2 + Math.random() * 2.5;
+            pickNextNPCTarget(npc);
+          }
+        } else {
+          const moveDir = npc.targetPos.clone().sub(npc.mesh.position).normalize();
+          npc.mesh.position.addScaledVector(moveDir, dt * 1.45);
+          const angle = Math.atan2(moveDir.x, moveDir.z);
+          npc.mesh.rotation.y = angle;
+          npc.walkPhase += dt * 10;
+          leftLeg.rotation.x = Math.sin(npc.walkPhase) * 0.55;
+          rightLeg.rotation.x = -Math.sin(npc.walkPhase) * 0.55;
+        }
+      });
+
+      renderer.render(scene, camera);
+    }
+
+    // 啟動初始化
+    loadUserState();
+    renderSidebarProgress();
+    animate();
+  </script>
+</body>
+</html>
